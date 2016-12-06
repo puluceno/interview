@@ -78,4 +78,13 @@ public class TaskRepository {
 		em.flush();
 	}
 
+	/**
+	 * Updates the new task into the database.
+	 * 
+	 * @param task
+	 */
+	public void update(Task task) {
+		em.merge(task);
+	}
+
 }

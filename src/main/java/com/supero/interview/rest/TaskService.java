@@ -16,6 +16,7 @@ import javax.validation.Validator;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -23,6 +24,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import com.supero.interview.data.TaskRepository;
+import com.supero.interview.model.StatusEnum;
 import com.supero.interview.model.Task;
 
 /**
@@ -48,6 +50,13 @@ public class TaskService {
 	}
 
 	@GET
+	@Path("/statuses")
+	@Produces(MediaType.APPLICATION_JSON)
+	public StatusEnum[] listStatus() {
+		return StatusEnum.values();
+	}
+
+	@GET
 	@Path("/{id:[0-9][0-9]*}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Object lookupTaskById(@PathParam("id") int id) {
@@ -68,7 +77,28 @@ public class TaskService {
 		try {
 			validateTask(task);
 			repository.register(task);
-			builder = Response.ok();
+			builder = Response.ok(task);
+		} catch (ConstraintViolationException ce) {
+			builder = createViolationResponse(ce.getConstraintViolations());
+		} catch (Exception e) {
+			Map<String, String> responseObj = new HashMap<>();
+			responseObj.put("error", e.getMessage());
+			builder = Response.status(Response.Status.BAD_REQUEST).entity(responseObj);
+		}
+		return builder.build();
+	}
+
+	@PUT
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response updateTask(Task task) {
+
+		Response.ResponseBuilder builder = null;
+
+		try {
+			validateTask(task);
+			repository.update(task);
+			builder = Response.ok(task);
 		} catch (ConstraintViolationException ce) {
 			builder = createViolationResponse(ce.getConstraintViolations());
 		} catch (Exception e) {
@@ -80,6 +110,8 @@ public class TaskService {
 	}
 
 	private void validateTask(Task task) throws ConstraintViolationException, ValidationException {
+		if (task.getStatus() == null)
+			task.setStatus(StatusEnum.OPEN);
 		Set<ConstraintViolation<Task>> violations = validator.validate(task);
 		if (!violations.isEmpty()) {
 			throw new ConstraintViolationException(new HashSet<ConstraintViolation<?>>(violations));
